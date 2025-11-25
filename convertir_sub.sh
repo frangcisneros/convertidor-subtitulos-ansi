@@ -15,7 +15,7 @@ clean_path=$(echo "$input_path" | tr -d "'")
 
 # Verificamos si el archivo existe
 if [ ! -f "$clean_path" ]; then
-    echo "❌ Error: No se encuentra el archivo. Asegúrate de arrastrarlo bien."
+    echo "Error: No se encuentra el archivo. Asegúrate de arrastrarlo bien."
     exit 1
 fi
 
