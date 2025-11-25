@@ -1,40 +1,53 @@
 #!/bin/bash
 
-echo "============================================"
-echo "   CONVERTIDOR DE SUBTÍTULOS A ANSI (TV)    "
-echo "============================================"
-echo "Por favor, arrastra el archivo .srt aquí y presiona ENTER:"
+# Función de limpieza
+function cleanup() {
+    if [ -f "$temp_file" ]; then
+        rm -f "$temp_file"
+    fi
+}
+trap cleanup EXIT
 
-# Lee la ruta del archivo (el modificador -r evita problemas con barras invertidas)
+echo "============================================"
+echo "   CONVERTIDOR DE SUBTITULOS A ANSI (TV)    "
+echo "============================================"
+echo "Por favor, arrastra el archivo .srt aqui y presiona ENTER:"
+
 read -r input_path
 
-# 1. Limpieza de la ruta:
-# Al arrastrar archivos en Ubuntu, la terminal suele poner comillas simples (' ') 
-# alrededor de la ruta. Las quitamos para que el comando funcione.
+# Limpieza de la ruta
 clean_path=$(echo "$input_path" | tr -d "'")
 
-# Verificamos si el archivo existe
+# VERIFICACION 1: ¿Existe el archivo?
 if [ ! -f "$clean_path" ]; then
-    echo "Error: No se encuentra el archivo. Asegúrate de arrastrarlo bien."
+    echo "Error: No se encuentra el archivo o no es valido."
+    echo "Presiona ENTER para cerrar..."
+    read
     exit 1
 fi
 
-# Definimos nombre temporal
-temp_file="${clean_path}.temp"
+# Intentamos crear el temporal
+temp_file=$(mktemp) || { 
+    echo "Error al crear archivo temporal"; 
+    echo "Presiona ENTER para cerrar..."; 
+    read; 
+    exit 1; 
+}
 
-# 2. Conversión:
-# Intentamos convertir de UTF-8 a ISO-8859-1 (ANSI)
 echo "Convirtiendo..."
-iconv -f UTF-8 -t ISO-8859-1 "$clean_path" -o "$temp_file"
 
-# 3. Verificación y Sobrescritura:
-# $? revisa si el comando anterior (iconv) fue exitoso (código 0)
-if [ $? -eq 0 ]; then
+# MODIFICACION IMPORTANTE: Agregamos -c y TRANSLIT
+# -c: Salta los errores en vez de frenar.
+# TRANSLIT: Aproxima caracteres que no tienen traduccion directa.
+if iconv -c -f UTF-8 -t ISO-8859-1//TRANSLIT "$clean_path" -o "$temp_file"; then
     mv "$temp_file" "$clean_path"
-    echo "¡Éxito! El archivo ha sido sobrescrito en formato ANSI."
+    echo "Exito! El archivo ha sido convertido a ANSI."
 else
-    echo "Error en la conversión. El archivo original NO se ha tocado."
-    rm -f "$temp_file" # Borramos el temporal si falló
+    echo "Error critico en la conversion."
+    echo "El archivo original NO se ha tocado."
+    echo "Presiona ENTER para cerrar..."
+    read
+    exit 1
 fi
 
 echo "Presiona ENTER para salir..."
